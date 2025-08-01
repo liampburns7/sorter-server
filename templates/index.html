@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Item Sorter</title>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    label, input, button { font-size: 1.2em; }
+    p { margin-top: 10px; font-size: 1.1em; }
+  </style>
+</head>
+<body>
+  <h1>Scan UPC</h1>
+  <form method="POST">
+    <label for="upc">Enter or Scan UPC:</label>
+    <input type="text" name="upc" id="upc" autofocus required>
+    <button type="submit">Submit</button>
+  </form>
+
+  {% if item_name %}
+    <p><strong>Item:</strong> {{ item_name }}</p>
+  {% endif %}
+  {% if category %}
+    <p><strong>Category:</strong> {{ category }}</p>
+  {% endif %}
+  {% if led_index is not none %}
+    <p><strong>LED Index:</strong> {{ led_index }}</p>
+  {% endif %}
+</body>
+</html>
