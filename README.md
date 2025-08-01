@@ -11,11 +11,5 @@ This project runs a Flask web server on a Raspberry Pi to control LEDs via SN74H
 ## File Structure
 - `app.py` — Flask server, handles form and LED triggering
 - `led_driver.py` — SPI interface and LED logic
-- `sample_db.py` — Lookup table of 50 UPCs
-- `templates/index.html` — UI page for entering UPCs
-
-## Setup
-1. Clone repo
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
+- `sample_db.py` — Lookup table of 50 pseudo-UPCs
+- `templates/index.html` — horrific UI page for entering UPCs
