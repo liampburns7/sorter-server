@@ -20,5 +20,9 @@ def index():
             item_name = "Unknown UPC"
     return render_template('index.html', item_name=item_name, category=category, led_index=led_index)
 
+@app.get("/health")
+def health():
+    return "ok", 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
