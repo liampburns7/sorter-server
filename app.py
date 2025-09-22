@@ -1,13 +1,22 @@
 # app.py
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, url_for
 import threading, time
 from flask_cors import CORS
+import led_driver as leds
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder = "static", static_url_path="/static")
+
+@app.get("/health")
+def health():
+	return jsonify(status="ok"), 200
 
 @app.get("/test")
 def test_page():
-	return send_from_directory("static", "led_tester.html")
+	return app.send_static_file("led_tester.html")
+
+@app.get("/_routes")
+def _routes():
+	return jsonify(sorted([f"{sorted(r.methods)} {r.rule}" for r in app.url_map.iter_rules()]))
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})  # permissive; fine for quick testing
 
