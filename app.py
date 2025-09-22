@@ -1,11 +1,14 @@
 # app.py
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import threading, time
 from flask_cors import CORS
 
 app = Flask(__name__)
 
-from flask_cors import CORS
+@app.get("/test")
+def test_page():
+	return send_from_directory("static", "led_tester.html")
+
 CORS(app, resources={r"/api/*": {"origins": "*"}})  # permissive; fine for quick testing
 
 CATEGORIES = [c.upper() for c in [
