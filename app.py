@@ -1,28 +1,65 @@
-from flask import Flask, request, render_template
-from led_driver import light_led
-from sample_db import UPC_DATABASE, CATEGORIES
+# app.py
+from flask import Flask, request, jsonify
+import threading, time
+from flask_cors import CORS
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    item_name = None
-    category = None
-    led_index = None
-    if request.method == 'POST':
-        upc = request.form['upc'].strip()
-        record = UPC_DATABASE.get(upc)
-        if record:
-            item_name, category = record
-            led_index = CATEGORIES.index(category)
-            light_led(led_index)
-        else:
-            item_name = "Unknown UPC"
-    return render_template('index.html', item_name=item_name, category=category, led_index=led_index)
+from flask_cors import CORS
+CORS(app, resources={r"/api/*": {"origins": "*"}})  # permissive; fine for quick testing
 
-@app.get("/health")
-def health():
-    return "ok", 200
+CATEGORIES = [c.upper() for c in [
+    "Misc/Other","HBA & Household","Drinks","Pet Supplies","Snacks & Candy","Pantry & Breakfast"
+]]
+STORES = [s.upper() for s in ["SOUTH GR","MUSKEGON","NORTON SHORES","WYOMING"]]
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+def _norm(s: str) -> str:
+    return s.strip().upper().replace(" AND ", " & ")
+
+def _to_device_id(category: str, store: str) -> int:
+    cu, su = _norm(category), _norm(store)
+    if cu == "BACKSTOCK" and su == "SOUTH GR":
+        return 24
+    try:
+        return STORES.index(su) * len(CATEGORIES) + CATEGORIES.index(cu)
+    except ValueError as e:
+        raise ValueError(f"Unknown store/category: store={store}, category={category}") from e
+
+def _off_in(ms):
+    def _t():
+        time.sleep(ms / 1000.0)
+        leds.all_off()
+    threading.Thread(target=_t, daemon=True).start()
+
+@app.post("/api/led/route")
+def led_route():
+    j = request.get_json(force=True)
+    category = j["category"]
+    store = j["storeName"]
+    mode = j.get("mode", "timed")      # "timed" | "sticky"
+    hold_ms = int(j.get("hold_ms", 10_000))
+    dry = bool(j.get("dry_run", False))
+
+    dev = _to_device_id(category, store)
+    mask = (1 << dev)
+
+    if not dry:
+        leds.set_mask(mask)            # one-hot → clears all other LEDs
+        if mode == "timed":
+            _off_in(hold_ms)
+
+    return jsonify(ok=True, deviceId=dev, maskHex=f"{mask:08X}", mode=mode, hold_ms=hold_ms)
+
+@app.post("/api/led/off")
+def led_off():
+    leds.all_off()
+    return jsonify(ok=True)
+
+@app.get("/api/led/test")
+def led_test():
+    ms = int(request.args.get("ms", "150"))
+    for i in range(25):
+        leds.one_hot(i)
+        time.sleep(ms / 1000.0)
+    leds.all_off()
+    return jsonify(ok=True)

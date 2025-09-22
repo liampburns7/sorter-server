@@ -1,29 +1,133 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Item Sorter</title>
+  <meta charset="utf-8" />
+  <title>Sorter LED Router — Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: sans-serif; margin: 40px; }
-    label, input, button { font-size: 1.2em; }
-    p { margin-top: 10px; font-size: 1.1em; }
+    body { font-family: system-ui, sans-serif; margin: 24px; }
+    fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 16px; max-width: 700px; }
+    label { display: block; margin: 8px 0 4px; font-weight: 600; }
+    select, input { padding: 6px 8px; font-size: 14px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    button { padding: 8px 14px; font-size: 14px; cursor: pointer; }
+    #out { white-space: pre-wrap; background:#0b1020; color:#e4e8ff; padding:12px; border-radius:8px; margin-top:16px; }
+    small { color:#666; }
   </style>
 </head>
 <body>
-  <h1>Scan UPC</h1>
-  <form method="POST">
-    <label for="upc">Enter or Scan UPC:</label>
-    <input type="text" name="upc" id="upc" autofocus required>
-    <button type="submit">Submit</button>
-  </form>
+  <h1>LED Route Tester</h1>
 
-  {% if item_name %}
-    <p><strong>Item:</strong> {{ item_name }}</p>
-  {% endif %}
-  {% if category %}
-    <p><strong>Category:</strong> {{ category }}</p>
-  {% endif %}
-  {% if led_index is not none %}
-    <p><strong>LED Index:</strong> {{ led_index }}</p>
-  {% endif %}
+  <fieldset>
+    <legend>Inputs</legend>
+    <div class="row">
+      <div>
+        <label for="category">Category</label>
+        <select id="category">
+          <option>Misc/Other</option>
+          <option>HBA & Household</option>
+          <option>Drinks</option>
+          <option>Pet Supplies</option>
+          <option>Snacks & Candy</option>
+          <option>Pantry & Breakfast</option>
+          <option>Backstock</option> <!-- only valid with SOUTH GR -->
+        </select>
+        <small>“Backstock” only maps when Store = SOUTH GR.</small>
+      </div>
+
+      <div>
+        <label for="store">Store</label>
+        <select id="store">
+          <option>SOUTH GR</option>
+          <option>MUSKEGON</option>
+          <option>NORTON SHORES</option>
+          <option>WYOMING</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="mode">Mode</label>
+        <select id="mode">
+          <option value="timed" selected>timed</option>
+          <option value="sticky">sticky</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="hold">Hold (ms)</label>
+        <input id="hold" type="number" min="0" step="100" value="10000" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <button id="go">Go</button>
+      <button id="off" type="button">All Off</button>
+      <label style="margin-left:auto;">
+        API Base&nbsp;
+        <input id="base" value="" placeholder="(optional) https://sorter.sortingfe.dev" style="min-width:280px;">
+      </label>
+    </div>
+  </fieldset>
+
+  <h3>Last Response</h3>
+  <div id="out">—</div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const category = el('category');
+    const store = el('store');
+    const mode = el('mode');
+    const hold = el('hold');
+    const out = el('out');
+    const base = el('base');
+
+    // Convenience: if Backstock chosen, force SOUTH GR; if store != SOUTH GR, prevent Backstock.
+    category.addEventListener('change', () => {
+      if (category.value === 'Backstock') store.value = 'SOUTH GR';
+    });
+    store.addEventListener('change', () => {
+      if (category.value === 'Backstock' && store.value !== 'SOUTH GR') {
+        category.value = 'Misc/Other';
+      }
+    });
+
+    function apiUrl(path) {
+      const b = base.value.trim().replace(/\/+$/, '');
+      return (b ? b : '') + path;
+    }
+
+    async function callRoute() {
+      const payload = {
+        category: category.value,
+        storeName: store.value,
+        mode: mode.value,
+        hold_ms: Number(hold.value || 0)
+      };
+      try {
+        const res = await fetch(apiUrl('/api/led/route'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
+      } catch (e) {
+        out.textContent = 'Request failed: ' + (e?.message || e);
+      }
+    }
+
+    async function callOff() {
+      try {
+        const res = await fetch(apiUrl('/api/led/off'), { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
+      } catch (e) {
+        out.textContent = 'Request failed: ' + (e?.message || e);
+      }
+    }
+
+    el('go').addEventListener('click', callRoute);
+    el('off').addEventListener('click', callOff);
+  </script>
 </body>
 </html>
