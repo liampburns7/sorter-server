@@ -180,3 +180,8 @@ def led_test_sequence():
         time.sleep(delay_ms / 1000.0)
     leds.all_off()
     return jsonify(ok=True)
+
+if __name__ == "__main__":
+    # run the dev server on all interfaces so Cloudflare/local can reach it
+    app.run(host="0.0.0.0", port=5000, debug=False)
+
