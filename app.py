@@ -2,11 +2,16 @@
 # Flask web service controlling a 24V LED array via SN74HC595 shift registers
 # and ULN2803A Darlington transistor drivers, connected to a Raspberry Pi.
 
+import os
 from flask import Flask, request, jsonify
 import threading
 import time
 from flask_cors import CORS
 import led_driver as leds  # hardware control layer for SPI communication
+
+STATION_ID = os.getenv("STATION_ID", "unknown").lower()
+STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
+EXPECTED_HOST = f"{STATION_ID}.sorter.sortingfe.dev".lower()
 
 # -----------------------------------------------------------------------------
 # Flask app configuration
@@ -22,7 +27,7 @@ CORS(app, resources = {r"/api/*" : {"origins" : "*"}})
 @app.get("/health")
 def health_check():
     """Basic health check endpoint."""
-    return jsonify(status = "ok"), 200
+    return jsonify(status = "ok", station_id = STATION_ID, station_label = STATION_LABEL), 200
 
 
 @app.get("/test")
@@ -105,6 +110,26 @@ def route_led_request():
     }
     """
     request_data = request.get_json(force = True)
+
+    # Route validation: check station ID and host
+    target_id = (request.data.get("stationId") or "").strip().lower()
+    if target_id and target_id != STATION_ID:
+        return jsonify(
+            ignored = True,
+            reason = "station ID mismatch",
+            station_id = STATION_ID
+        ), 202
+
+    req_host = (request.host or "").split(":")[0].lower()
+    if EXPECTED_HOST and req_host and EXPECTED_HOST != req_host:
+        return jsonify(
+            ignored = True,
+            reason = "host mismatch",
+            station_id = STATION_ID,
+            host = req_host
+        ), 202
+    
+    # Extract parameters from request
     category_name = request_data["category"]
     store_name = request_data["storeName"]
     led_mode = request_data.get("mode", "timed")           # either 'timed' or 'sticky'
@@ -128,6 +153,7 @@ def route_led_request():
     # Respond with debug information
     return jsonify(
         ok=True,
+        station_id=STATION_ID,
         deviceId=led_index,
         maskHex=f"{led_bitmask:08X}",
         mode=led_mode,
