@@ -14,7 +14,7 @@ load_dotenv()
 
 STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
-EXPECTED_HOST = f"{STATION_ID}.sorter.sortingfe.dev".lower()
+EXPECTED_HOST = f"{STATION_ID}.sortingfe.dev".lower()
 
 # -----------------------------------------------------------------------------
 # Flask app configuration
