@@ -8,6 +8,9 @@ import threading
 import time
 from flask_cors import CORS
 import led_driver as leds  # hardware control layer for SPI communication
+from dotenv import load_dotenv
+
+load_dotenv()
 
 STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
