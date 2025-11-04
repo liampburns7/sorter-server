@@ -116,7 +116,7 @@ def route_led_request():
     request_data = request.get_json(force = True)
 
     # Route validation: check station ID and host
-    target_id = (request.data.get("stationId") or "").strip().lower()
+    target_id = (request_data.get("stationId") or "").strip().lower()
     if target_id and target_id != STATION_ID:
         return jsonify(
             ignored = True,
