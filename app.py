@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# -----------------------------------------------------------------------------
+# Configuration from environment variables
+# ----------------------------------------------------------------------------- 
 DEFAULT_ALLOWED_ORIGIN = "https://sorter.sortingfe.dev"
 ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGIN)
 ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_ENV.split(",") if origin.strip()]
@@ -20,6 +23,16 @@ if not ALLOWED_ORIGINS:
 
 STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
+
+# -----------------------------------------------------------------------------
+# LED mapping constants
+# -----------------------------------------------------------------------------
+
+# Special function LEDs (beyond the 24 category/store combinations)
+WAREHOUSE_LED_MAP = {
+    "ADD_TO_QTY": 25,
+    "UNIQUES": 26,
+}
 
 # -----------------------------------------------------------------------------
 # Flask app configuration
@@ -78,6 +91,15 @@ def map_to_led_index(category_name: str, store_name: str) -> int:
     """
     normalized_category = normalize_string(category_name)
     normalized_store = normalize_string(store_name)
+
+    # Special case: dedicated add to qty LED
+    if normalized_store == "WAREHOUSE":
+        try:
+            return WAREHOUSE_LED_MAP[normalized_category]
+        except KeyError as error:
+            raise ValueError(
+                f"Unknown WAREHOUSE category={category_name}"
+            ) from error
 
     # Special case: dedicated backstock LED for South GR
     if normalized_category == "BACKSTOCK" and normalized_store == "SOUTH GR":
@@ -176,7 +198,7 @@ def led_test_sequence():
     Optional query parameter: ?ms=150 (delay per LED)
     """
     delay_ms = int(request.args.get("ms", "150"))
-    for led_index in range(25):  # cycle through LEDs 0–24
+    for led_index in range(27):  # cycle through LEDs 0–26
         leds.one_hot(led_index)
         time.sleep(delay_ms / 1000.0)
     leds.all_off()
