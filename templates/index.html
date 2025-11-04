@@ -90,7 +90,19 @@
     const out = el('out');
     const base = el('base');
 
-    // Convenience: if Backstock chosen, force SOUTH GR; if store != SOUTH GR, prevent Backstock.
+    // Map stations → their hosts (use your real subdomains/hosts here)
+    const HOSTS = {
+      sorter1: 'https://alpha.sorter.sortingfe.dev',
+      sorter2: 'https://bravo.sorter.sortingfe.dev'
+      // e.g., or 'http://sorter1.local', 'http://sorter2.local'
+    };
+
+    // If user hasn’t typed a custom base, auto-fill when station changes
+    station.addEventListener('change', () => {
+      if (!base.value.trim()) base.value = HOSTS[station.value] || '';
+    });
+
+    // Backstock guard (unchanged)
     category.addEventListener('change', () => {
       if (category.value === 'Backstock') store.value = 'SOUTH GR';
     });
@@ -101,8 +113,10 @@
     });
 
     function apiUrl(path) {
-      const b = base.value.trim().replace(/\/+$/, '');
-      return (b ? b : '') + path;
+      const manual = base.value.trim();
+      const stationBase = HOSTS[station.value] || '';
+      const root = (manual || stationBase).replace(/\/+$/, '');
+      return root + path;
     }
 
     async function callRoute() {
@@ -119,7 +133,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const data = await res.json().catch(() => ({}));
+        const txt = await res.text();
+        let data = {}; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
         out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
       } catch (e) {
         out.textContent = 'Request failed: ' + (e?.message || e);
@@ -127,9 +142,10 @@
     }
 
     async function callOff() {
-      try {
+        try {
         const res = await fetch(apiUrl('/api/led/off'), { method: 'POST' });
-        const data = await res.json().catch(() => ({}));
+        const txt = await res.text();
+        let data = {}; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
         out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
       } catch (e) {
         out.textContent = 'Request failed: ' + (e?.message || e);
@@ -138,6 +154,7 @@
 
     el('go').addEventListener('click', callRoute);
     el('off').addEventListener('click', callOff);
-  </script>
+    </script>
+
 </body>
 </html>
