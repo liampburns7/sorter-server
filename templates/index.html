@@ -5,80 +5,384 @@
   <title>Sorter LED Router — Test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 16px; max-width: 700px; }
-    label { display: block; margin: 8px 0 4px; font-weight: 600; }
-    select, input { padding: 6px 8px; font-size: 14px; }
-    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
-    button { padding: 8px 14px; font-size: 14px; cursor: pointer; }
-    #out { white-space: pre-wrap; background:#0b1020; color:#e4e8ff; padding:12px; border-radius:8px; margin-top:16px; }
-    small { color:#666; }
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --bg-accent: #172554;
+      --panel: rgba(15, 23, 42, 0.85);
+      --panel-light: #f8fafc;
+      --text: #e2e8f0;
+      --text-dark: #0f172a;
+      --accent: #38bdf8;
+      --accent-strong: #0ea5e9;
+      --border: rgba(148, 163, 184, 0.25);
+      --shadow: 0 24px 60px -24px rgba(15, 23, 42, 0.65);
+      --success: #34d399;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.18), transparent 55%),
+                  radial-gradient(circle at 80% 10%, rgba(96, 165, 250, 0.15), transparent 50%),
+                  radial-gradient(circle at 50% 80%, rgba(59, 130, 246, 0.12), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: clamp(24px, 5vw, 60px);
+    }
+
+    main.shell {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 28px;
+    }
+
+    header.hero {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 50ch;
+      color: rgba(226, 232, 240, 0.8);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.3em;
+      font-weight: 600;
+      color: rgba(148, 163, 184, 0.75);
+      margin-bottom: 10px;
+    }
+
+    .status-block {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+      background: linear-gradient(145deg, rgba(148, 163, 184, 0.12), rgba(59, 130, 246, 0.12));
+      padding: 16px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .status-block span.label {
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .status-pill {
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background 160ms ease, color 160ms ease;
+      border: 1px solid transparent;
+      background: rgba(148, 163, 184, 0.18);
+    }
+
+    .status-pill.tone-idle { color: rgba(226, 232, 240, 0.82); }
+    .status-pill.tone-active { color: var(--text-dark); background: var(--accent); border-color: rgba(14, 165, 233, 0.4); }
+    .status-pill.tone-success { color: var(--text-dark); background: var(--success); border-color: rgba(16, 185, 129, 0.4); }
+    .status-pill.tone-error { color: var(--text-dark); background: var(--danger); border-color: rgba(248, 113, 113, 0.4); }
+
+    section.panel {
+      backdrop-filter: blur(22px);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.72));
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: clamp(22px, 5vw, 36px);
+      display: grid;
+      gap: 24px;
+    }
+
+    section.panel h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    form.grid {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+      color: rgba(226, 232, 240, 0.86);
+    }
+
+    select, input, textarea {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 14px;
+      color: var(--text);
+      padding: 12px 14px;
+      font-size: 15px;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: rgba(56, 189, 248, 0.75);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+    }
+
+    small.note {
+      font-size: 12px;
+      color: rgba(148, 163, 184, 0.82);
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(148, 163, 184, 0.14);
+      padding-top: 18px;
+      margin-top: 6px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      padding: 12px 22px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: var(--text-dark);
+      box-shadow: 0 10px 30px -18px var(--accent-strong);
+    }
+
+    button.secondary {
+      background: rgba(148, 163, 184, 0.25);
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px -22px rgba(56, 189, 248, 0.45);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .api-base {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: min(320px, 100%);
+    }
+
+    pre#out {
+      margin: 0;
+      background: rgba(2, 6, 23, 0.82);
+      border-radius: 22px;
+      border: 1px solid rgba(15, 23, 42, 0.6);
+      padding: 20px;
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: rgba(226, 232, 240, 0.92);
+      box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+    }
+
+    footer.meta {
+      font-size: 13px;
+      color: rgba(148, 163, 184, 0.7);
+      text-align: center;
+    }
+
+    .activity-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .activity-list li {
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.65);
+      font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: rgba(226, 232, 240, 0.9);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .activity-list li span.log-line {
+      flex: 1;
+    }
+
+    .activity-list li span.status {
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(148, 163, 184, 0.2);
+    }
+
+    .activity-list li span.status.ok {
+      color: var(--text-dark);
+      background: rgba(52, 211, 153, 0.9);
+    }
+
+    .activity-list li span.status.fail {
+      color: var(--text-dark);
+      background: rgba(248, 113, 113, 0.85);
+    }
+
+    .activity-list li.empty {
+      justify-content: center;
+      color: rgba(148, 163, 184, 0.7);
+      font-style: italic;
+    }
+
+    @media (max-width: 720px) {
+      .actions { flex-direction: column; align-items: stretch; }
+      .button-group { width: 100%; }
+      .button-group button { flex: 1; }
+    }
   </style>
 </head>
 <body>
-  <h1>LED Route Tester</h1>
-
-  <fieldset>
-    <legend>Inputs</legend>
-    <div class="row">
+  <main class="shell">
+    <header class="hero">
       <div>
-        <label for="station">Station</label>
-        <select id="station">
-          <option value="sorter1">sorter1</option>
-          <option value="sorter2">sorter2</option>
-        </select>
+        <div class="eyebrow">Developer Utility</div>
+        <h1>Sorter LED Route Tester</h1>
+        <p>Drive LEDs from your browser to validate store/category mappings before deploying to a station.</p>
       </div>
-
-      <div>
-        <label for="category">Category</label>
-        <select id="category">
-          <option>Misc/Other</option>
-          <option>HBA & Household</option>
-          <option>Drinks</option>
-          <option>Pet Supplies</option>
-          <option>Snacks & Candy</option>
-          <option>Pantry & Breakfast</option>
-          <option>Backstock</option> <!-- only valid with SOUTH GR -->
-        </select>
-        <small>“Backstock” only maps when Store = SOUTH GR.</small>
+      <div class="status-block">
+        <span class="label">Live status</span>
+        <span id="status" class="status-pill tone-idle">Idle</span>
       </div>
+    </header>
 
-      <div>
-        <label for="store">Store</label>
-        <select id="store">
-          <option>SOUTH GR</option>
-          <option>MUSKEGON</option>
-          <option>NORTON SHORES</option>
-          <option>WYOMING</option>
-        </select>
+    <section class="panel">
+      <h2>Command builder</h2>
+      <form class="grid" onsubmit="return false;">
+        <div class="field">
+          <label for="station">Station</label>
+          <select id="station">
+            <option value="sorter1">sorter1</option>
+            <option value="sorter2">sorter2</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="store">Store</label>
+          <select id="store">
+            <option>SOUTH GR</option>
+            <option>MUSKEGON</option>
+            <option>NORTON SHORES</option>
+            <option>WYOMING</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category">
+            <option>Misc/Other</option>
+            <option>HBA & Household</option>
+            <option>Drinks</option>
+            <option>Pet Supplies</option>
+            <option>Snacks & Candy</option>
+            <option>Pantry & Breakfast</option>
+            <option>Backstock</option>
+          </select>
+          <small class="note">“Backstock” is available only when Store = SOUTH GR.</small>
+        </div>
+
+        <div class="field">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="timed" selected>timed (auto off)</option>
+            <option value="sticky">sticky (manual off)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="hold">Hold duration (ms)</label>
+          <input id="hold" type="number" min="0" step="100" value="10000" />
+        </div>
+      </form>
+
+      <div class="actions">
+        <div class="button-group">
+          <button id="go" type="button" class="primary">Send route</button>
+          <button id="off" type="button" class="secondary">All off</button>
+        </div>
+        <label class="api-base">
+          <span>API base URL</span>
+          <input id="base" value="" placeholder="(optional) https://sorter.sortingfe.dev" />
+        </label>
       </div>
+    </section>
 
-      <div>
-        <label for="mode">Mode</label>
-        <select id="mode">
-          <option value="timed" selected>timed</option>
-          <option value="sticky">sticky</option>
-        </select>
-      </div>
+    <section class="panel">
+      <h2>Last response</h2>
+      <pre id="out">Awaiting command…</pre>
+    </section>
 
-      <div>
-        <label for="hold">Hold (ms)</label>
-        <input id="hold" type="number" min="0" step="100" value="10000" />
-      </div>
-    </div>
+    <section class="panel">
+      <h2>Recent activity</h2>
+      <ul class="activity-list" id="activity">
+        <li class="empty">No activity yet.</li>
+      </ul>
+    </section>
 
-    <div class="row" style="margin-top:12px;">
-      <button id="go">Go</button>
-      <button id="off" type="button">All Off</button>
-      <label style="margin-left:auto;">
-        API Base&nbsp;
-        <input id="base" value="" placeholder="(optional) https://sorter.sortingfe.dev" style="min-width:280px;">
-      </label>
-    </div>
-  </fieldset>
-
-  <h3>Last Response</h3>
-  <div id="out">—</div>
+    <footer class="meta">Tip: leave the API base empty to use the default host for the selected station.</footer>
+  </main>
 
   <script>
     const el = (id) => document.getElementById(id);
@@ -89,12 +393,63 @@
     const hold = el('hold');
     const out = el('out');
     const base = el('base');
+    const statusPill = el('status');
+    const activityList = el('activity');
+    const recentActivity = [];
 
     // Map stations → their hosts (use your real subdomains/hosts here)
     const HOSTS = {
       sorter1: 'https://sorter1.sortingfe.dev',
       sorter2: 'https://sorter2.sortingfe.dev'
     };
+
+    function formatTimestamp(date) {
+      return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    }
+
+    function setStatus(message, tone = 'idle') {
+      statusPill.textContent = message;
+      statusPill.classList.remove('tone-idle', 'tone-active', 'tone-success', 'tone-error');
+      statusPill.classList.add(`tone-${tone}`);
+    }
+
+    function renderActivity() {
+      if (!recentActivity.length) {
+        activityList.innerHTML = '<li class="empty">No activity yet.</li>';
+        return;
+      }
+      activityList.innerHTML = recentActivity
+        .map((entry) => `
+          <li>
+            <span class="log-line">${entry.timestamp} | ${entry.station} | ${entry.store} | ${entry.category} |</span>
+            <span class="status ${entry.ok ? 'ok' : 'fail'}">${entry.status}</span>
+          </li>
+        `)
+        .join('');
+    }
+
+    function addActivity({ station: stationId, storeName, categoryName, ok, status }) {
+      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const record = {
+        id,
+        timestamp: formatTimestamp(new Date()),
+        station: stationId,
+        store: storeName || '—',
+        category: categoryName || '—',
+        ok,
+        status
+      };
+      recentActivity.unshift(record);
+      if (recentActivity.length > 8) recentActivity.pop();
+      renderActivity();
+      setTimeout(() => {
+        const idx = recentActivity.findIndex((item) => item.id === id);
+        if (idx !== -1) {
+          recentActivity.splice(idx, 1);
+          renderActivity();
+        }
+      }, 60000);
+    }
 
     // If user hasn’t typed a custom base, auto-fill when station changes
     station.addEventListener('change', () => {
@@ -118,6 +473,16 @@
       return root + path;
     }
 
+    function renderResponse(res, txt) {
+      let data = {};
+      try {
+        data = JSON.parse(txt);
+      } catch (err) {
+        data = { raw: txt };
+      }
+      out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
+    }
+
     async function callRoute() {
       const payload = {
         stationId: station.value,
@@ -126,6 +491,8 @@
         mode: mode.value,
         hold_ms: Number(hold.value || 0)
       };
+      setStatus('Sending route…', 'active');
+      out.textContent = 'Awaiting response…';
       try {
         const res = await fetch(apiUrl('/api/led/route'), {
           method: 'POST',
@@ -133,27 +500,67 @@
           body: JSON.stringify(payload)
         });
         const txt = await res.text();
-        let data = {}; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
-        out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
+        renderResponse(res, txt);
+        setStatus(res.ok ? 'Route delivered' : `Error ${res.status}`, res.ok ? 'success' : 'error');
+        addActivity({
+          station: payload.stationId,
+          storeName: payload.storeName,
+          categoryName: payload.category,
+          ok: res.ok,
+          status: res.ok ? 'Success' : `Error ${res.status}`
+        });
       } catch (e) {
+        setStatus('Request failed', 'error');
         out.textContent = 'Request failed: ' + (e?.message || e);
+        addActivity({
+          station: payload.stationId,
+          storeName: payload.storeName,
+          categoryName: payload.category,
+          ok: false,
+          status: 'Request failed'
+        });
       }
     }
 
     async function callOff() {
-        try {
+      setStatus('Sending all-off…', 'active');
+      out.textContent = 'Awaiting response…';
+      try {
         const res = await fetch(apiUrl('/api/led/off'), { method: 'POST' });
         const txt = await res.text();
-        let data = {}; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
-        out.textContent = JSON.stringify({ status: res.status, ok: res.ok, ...data }, null, 2);
+        renderResponse(res, txt);
+        setStatus(res.ok ? 'All LEDs off' : `Error ${res.status}`, res.ok ? 'success' : 'error');
+        addActivity({
+          station: station.value,
+          storeName: store.value,
+          categoryName: 'All Off',
+          ok: res.ok,
+          status: res.ok ? 'Success' : `Error ${res.status}`
+        });
       } catch (e) {
+        setStatus('Request failed', 'error');
         out.textContent = 'Request failed: ' + (e?.message || e);
+        addActivity({
+          station: station.value,
+          storeName: store.value,
+          categoryName: 'All Off',
+          ok: false,
+          status: 'Request failed'
+        });
       }
     }
 
     el('go').addEventListener('click', callRoute);
     el('off').addEventListener('click', callOff);
-    </script>
+
+    // Auto-fill base for the initial station selection
+    window.addEventListener('load', () => {
+      if (!base.value.trim()) {
+        base.value = HOSTS[station.value] || '';
+      }
+      renderActivity();
+    });
+  </script>
 
 </body>
 </html>
