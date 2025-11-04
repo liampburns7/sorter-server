@@ -22,6 +22,14 @@
     <legend>Inputs</legend>
     <div class="row">
       <div>
+        <label for="station">Station</label>
+        <select id="station">
+          <option value="sorter1">sorter1</option>
+          <option value="sorter2">sorter2</option>
+        </select>
+      </div>
+
+      <div>
         <label for="category">Category</label>
         <select id="category">
           <option>Misc/Other</option>
@@ -74,6 +82,7 @@
 
   <script>
     const el = (id) => document.getElementById(id);
+    const station = el('station');
     const category = el('category');
     const store = el('store');
     const mode = el('mode');
@@ -98,6 +107,7 @@
 
     async function callRoute() {
       const payload = {
+        stationId: station.value,
         category: category.value,
         storeName: store.value,
         mode: mode.value,

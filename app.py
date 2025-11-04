@@ -105,6 +105,7 @@ def route_led_request():
 
     Request JSON example:
     {
+        "stationId": "sorter1",
         "category": "Snacks & Candy",
         "storeName": "South GR",
         "mode": "timed" | "sticky",
