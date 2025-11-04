@@ -14,7 +14,6 @@ load_dotenv()
 
 STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
-EXPECTED_HOST = f"{STATION_ID}.sortingfe.dev".lower()
 
 # -----------------------------------------------------------------------------
 # Flask app configuration
@@ -22,7 +21,7 @@ EXPECTED_HOST = f"{STATION_ID}.sortingfe.dev".lower()
 app = Flask(__name__, static_folder = "static", static_url_path = "/static")
 
 # Allow API calls from other domains (useful during development)
-CORS(app, resources = {r"/api/*" : {"origins" : "*"}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # -----------------------------------------------------------------------------
 # Basic diagnostic endpoints
@@ -122,15 +121,6 @@ def route_led_request():
             ignored = True,
             reason = "station ID mismatch",
             station_id = STATION_ID
-        ), 202
-
-    req_host = (request.host or "").split(":")[0].lower()
-    if EXPECTED_HOST and req_host and EXPECTED_HOST != req_host:
-        return jsonify(
-            ignored = True,
-            reason = "host mismatch",
-            station_id = STATION_ID,
-            host = req_host
         ), 202
     
     # Extract parameters from request
