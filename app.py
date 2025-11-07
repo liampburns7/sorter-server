@@ -12,15 +12,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# -----------------------------------------------------------------------------
-# Configuration from environment variables
-# ----------------------------------------------------------------------------- 
-DEFAULT_ALLOWED_ORIGIN = "https://sorter.sortingfe.dev"
-ALLOWED_ORIGINS_ENV = os.getenv("ALLOWED_ORIGINS", DEFAULT_ALLOWED_ORIGIN)
-ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS_ENV.split(",") if origin.strip()]
-if not ALLOWED_ORIGINS:
-    ALLOWED_ORIGINS = [DEFAULT_ALLOWED_ORIGIN]
-
 STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
 
@@ -40,8 +31,7 @@ WAREHOUSE_LED_MAP = {
 app = Flask(__name__, static_folder = "static", static_url_path = "/static")
 
 # Allow API calls from an allowlist of origins (configurable via environment)
-cors_origins = ALLOWED_ORIGINS if len(ALLOWED_ORIGINS) > 1 else ALLOWED_ORIGINS[0]
-CORS(app, resources={r"/*": {"origins": cors_origins}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # -----------------------------------------------------------------------------
 # Basic diagnostic endpoints
