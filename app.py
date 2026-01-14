@@ -16,16 +16,6 @@ STATION_ID = os.getenv("STATION_ID", "unknown").lower()
 STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
 
 # -----------------------------------------------------------------------------
-# LED mapping constants
-# -----------------------------------------------------------------------------
-
-# Special function LEDs (beyond the 24 category/store combinations)
-WAREHOUSE_LED_MAP = {
-    "ADD_TO_QTY": 25,
-    "UNIQUES": 26,
-}
-
-# -----------------------------------------------------------------------------
 # Flask app configuration
 # -----------------------------------------------------------------------------
 app = Flask(__name__, static_folder = "static", static_url_path = "/static")
@@ -55,15 +45,16 @@ def list_routes():
     return jsonify(sorted(route_list))
 
 # -----------------------------------------------------------------------------
-# Constants for store/category mapping
+# Constants for location mapping
 # -----------------------------------------------------------------------------
-CATEGORY_NAMES = [category.upper() for category in [
-    "Misc/Other", "HBA & Household", "Drinks",
-    "Pet Supplies", "Snacks & Candy", "Pantry & Breakfast"
-]]
-
-STORE_NAMES = [store.upper() for store in [
-    "South GR", "Muskegon", "Norton Shores", "Wyoming"
+LOCATION_NAMES = [location.upper() for location in [
+    "South GR",
+    "Muskegon",
+    "Norton Shores",
+    "Wyoming",
+    "Backstock",
+    "Uniques",
+    "Add to Qty",
 ]]
 
 # -----------------------------------------------------------------------------
@@ -74,35 +65,16 @@ def normalize_string(input_string: str) -> str:
     return input_string.strip().upper().replace(" AND ", " & ")
 
 
-def map_to_led_index(category_name: str, store_name: str) -> int:
+def map_to_led_index(location_name: str) -> int:
     """
-    Convert a category and store name into a specific LED index (0–23).
-    Each store corresponds to a group of 6 categories (6 LEDs per store).
+    Convert a location name into a specific LED index.
     """
-    normalized_category = normalize_string(category_name)
-    normalized_store = normalize_string(store_name)
-
-    # Special case: dedicated add to qty LED
-    if normalized_store == "WAREHOUSE":
-        try:
-            return WAREHOUSE_LED_MAP[normalized_category]
-        except KeyError as error:
-            raise ValueError(
-                f"Unknown WAREHOUSE category={category_name}"
-            ) from error
-
-    # Special case: dedicated backstock LED for South GR
-    if normalized_category == "BACKSTOCK" and normalized_store == "SOUTH GR":
-        return 24
-
+    normalized_location = normalize_string(location_name)
     try:
-        # Flatten store/category grid: LED index = store_index * num_categories + category_index
-        store_index = STORE_NAMES.index(normalized_store)
-        category_index = CATEGORY_NAMES.index(normalized_category)
-        return store_index * len(CATEGORY_NAMES) + category_index
+        return LOCATION_NAMES.index(normalized_location)
     except ValueError as error:
         raise ValueError(
-            f"Unknown store/category combination: store={store_name}, category={category_name}"
+            f"Unknown location: location={location_name}"
         ) from error
 
 
@@ -119,13 +91,12 @@ def schedule_all_off(delay_ms: int):
 @app.post("/api/led/route")
 def route_led_request():
     """
-    Activate a specific LED based on category/store information.
+    Activate a specific LED based on location information.
 
     Request JSON example:
     {
         "stationId": "sorter1",
-        "category": "Snacks & Candy",
-        "storeName": "South GR",
+        "location": "South GR",
         "mode": "timed" | "sticky",
         "hold_ms": 10000,
         "dry_run": false
@@ -143,14 +114,13 @@ def route_led_request():
         ), 202
     
     # Extract parameters from request
-    category_name = request_data["category"]
-    store_name = request_data["storeName"]
+    location_name = request_data["location"]
     led_mode = request_data.get("mode", "timed")           # either 'timed' or 'sticky'
     hold_duration_ms = int(request_data.get("hold_ms", 10_000))  # default: 10 seconds
     dry_run_mode = bool(request_data.get("dry_run", False))       # skip hardware if true
 
-    # Determine LED index for this category/store combination
-    led_index = map_to_led_index(category_name, store_name)
+    # Determine LED index for this location
+    led_index = map_to_led_index(location_name)
 
     # Create one-hot bitmask for SPI write (1 shifted by LED index)
     led_bitmask = (1 << led_index)
@@ -188,7 +158,7 @@ def led_test_sequence():
     Optional query parameter: ?ms=150 (delay per LED)
     """
     delay_ms = int(request.args.get("ms", "150"))
-    for led_index in range(27):  # cycle through LEDs 0–26
+    for led_index in range(len(LOCATION_NAMES)):  # cycle through location LEDs
         leds.one_hot(led_index)
         time.sleep(delay_ms / 1000.0)
     leds.all_off()
@@ -197,4 +167,3 @@ def led_test_sequence():
 if __name__ == "__main__":
     # run the dev server on all interfaces so Cloudflare/local can reach it
     app.run(host="0.0.0.0", port=5000, debug=False)
-
