@@ -276,21 +276,18 @@
             <option>MUSKEGON</option>
             <option>NORTON SHORES</option>
             <option>WYOMING</option>
+            <option>WAREHOUSE</option>
           </select>
         </div>
 
         <div class="field">
           <label for="category">Category</label>
           <select id="category">
-            <option>Misc/Other</option>
-            <option>HBA & Household</option>
-            <option>Drinks</option>
-            <option>Pet Supplies</option>
-            <option>Snacks & Candy</option>
-            <option>Pantry & Breakfast</option>
-            <option>Backstock</option>
+            <option>Grocery</option>
+            <option>Chemical</option>
+            <option>Uniques</option>
+            <option>Add to Qty</option>
           </select>
-          <small class="note">“Backstock” is available only when Store = SOUTH GR.</small>
         </div>
 
         <div class="field">
@@ -357,11 +354,20 @@
 
     // Backstock guard (unchanged)
     category.addEventListener('change', () => {
-      if (category.value === 'Backstock') store.value = 'SOUTH GR';
+      if (category.value === 'Uniques') store.value = 'WAREHOUSE';
     });
     store.addEventListener('change', () => {
-      if (category.value === 'Backstock' && store.value !== 'SOUTH GR') {
-        category.value = 'Misc/Other';
+      if (category.value === 'Uniques' && store.value !== 'WAREHOUSE') {
+        category.value = 'Chemical';
+      }
+    });
+    
+    category.addEventListener('change', () => {
+      if (category.value === 'Add to Qty') store.value = 'WAREHOUSE';
+    });
+    store.addEventListener('change', () => {
+      if (category.value === 'Add to Qty' && store.value !== 'WAREHOUSE') {
+        category.value = 'Chemical';
       }
     });
 
