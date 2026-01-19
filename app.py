@@ -19,10 +19,10 @@ STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
 # LED mapping constants
 # -----------------------------------------------------------------------------
 
-# Special function LEDs (beyond the 24 category/store combinations)
+# Special function LEDs
 WAREHOUSE_LED_MAP = {
-    "ADD_TO_QTY": 25,
-    "UNIQUES": 26,
+    "ADD_TO_QTY": 8,
+    "UNIQUES": 9,
 }
 
 # -----------------------------------------------------------------------------
@@ -58,12 +58,11 @@ def list_routes():
 # Constants for store/category mapping
 # -----------------------------------------------------------------------------
 CATEGORY_NAMES = [category.upper() for category in [
-    "Misc/Other", "HBA & Household", "Drinks",
-    "Pet Supplies", "Snacks & Candy", "Pantry & Breakfast"
+    "Grocery", "Chemical"
 ]]
 
 STORE_NAMES = [store.upper() for store in [
-    "South GR", "Muskegon", "Norton Shores", "Wyoming"
+    "Muskegon", "Norton Shores", "South GR", "Wyoming"
 ]]
 
 # -----------------------------------------------------------------------------
@@ -76,12 +75,13 @@ def normalize_string(input_string: str) -> str:
 
 def map_to_led_index(category_name: str, store_name: str) -> int:
     """
-    Convert a category and store name into a specific LED index (0–23).
-    Each store corresponds to a group of 6 categories (6 LEDs per store).
+    Convert category + store into an LED index.
+    Grid LEDs: 0..(len(STORE_NAMES)*len(CATEGORY_NAMES)-1)
+    Special LEDs: storeName == "WAREHOUSE" uses WAREHOUSE_LED_MAP
     """
     normalized_category = normalize_string(category_name)
     normalized_store = normalize_string(store_name)
-
+    
     # Special case: dedicated add to qty LED
     if normalized_store == "WAREHOUSE":
         try:
@@ -90,10 +90,6 @@ def map_to_led_index(category_name: str, store_name: str) -> int:
             raise ValueError(
                 f"Unknown WAREHOUSE category={category_name}"
             ) from error
-
-    # Special case: dedicated backstock LED for South GR
-    if normalized_category == "BACKSTOCK" and normalized_store == "SOUTH GR":
-        return 24
 
     try:
         # Flatten store/category grid: LED index = store_index * num_categories + category_index
@@ -143,14 +139,20 @@ def route_led_request():
         ), 202
     
     # Extract parameters from request
-    category_name = request_data["category"]
-    store_name = request_data["storeName"]
+    category_name = request_data.get("category")
+    store_name = request_data.get("storeName")
+    if not category_name or not store_name:
+        return jsonify(ok=False, error="Missing category or storeName"), 400
     led_mode = request_data.get("mode", "timed")           # either 'timed' or 'sticky'
     hold_duration_ms = int(request_data.get("hold_ms", 10_000))  # default: 10 seconds
     dry_run_mode = bool(request_data.get("dry_run", False))       # skip hardware if true
 
     # Determine LED index for this category/store combination
-    led_index = map_to_led_index(category_name, store_name)
+    try:
+        led_index = map_to_led_index(category_name, store_name)
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+
 
     # Create one-hot bitmask for SPI write (1 shifted by LED index)
     led_bitmask = (1 << led_index)
@@ -168,7 +170,7 @@ def route_led_request():
         ok=True,
         station_id=STATION_ID,
         deviceId=led_index,
-        maskHex=f"{led_bitmask:08X}",
+        maskHex=hex(led_bitmask),
         mode=led_mode,
         hold_ms=hold_duration_ms
     )
@@ -188,7 +190,7 @@ def led_test_sequence():
     Optional query parameter: ?ms=150 (delay per LED)
     """
     delay_ms = int(request.args.get("ms", "150"))
-    for led_index in range(27):  # cycle through LEDs 0–26
+    for led_index in list(range(len(STORE_NAMES)*len(CATEGORY_NAMES))) + list(WAREHOUSE_LED_MAP.values()):
         leds.one_hot(led_index)
         time.sleep(delay_ms / 1000.0)
     leds.all_off()
