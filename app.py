@@ -25,6 +25,23 @@ WAREHOUSE_LED_MAP = {
     "UNIQUES": 9,
 }
 
+# Categories the API is allowed to receive from Korting/front-end
+API_CATEGORY_NAMES = {
+    "MISC/OTHER",
+    "HBA & HOUSEHOLD",
+    "DRINKS",
+    "PET SUPPLIES",
+    "SNACK & CANDY",
+    "PANTRY & BREAKFAST",
+}
+
+# Collapse API categories down to hardware categories
+API_TO_HARDWARE_CATEGORY = {
+    "HBA & HOUSEHOLD": "CHEMICAL",
+    # everything else -> GROCERY (handled in function below)
+}
+
+
 # -----------------------------------------------------------------------------
 # Flask app configuration
 # -----------------------------------------------------------------------------
@@ -57,9 +74,12 @@ def list_routes():
 # -----------------------------------------------------------------------------
 # Constants for store/category mapping
 # -----------------------------------------------------------------------------
+
+# Hardware categories (the only ones that map to LEDs per store)
 CATEGORY_NAMES = [category.upper() for category in [
     "Grocery", "Chemical"
 ]]
+
 
 STORE_NAMES = [store.upper() for store in [
     "Muskegon", "Norton Shores", "South GR", "Wyoming"
@@ -71,6 +91,25 @@ STORE_NAMES = [store.upper() for store in [
 def normalize_string(input_string: str) -> str:
     """Normalize string formatting for consistent matching."""
     return input_string.strip().upper().replace(" AND ", " & ")
+
+def collapse_category(category_name: str, store_name: str) -> str:
+    """
+    Converts API-level categories into hardware-level categories.
+    Special warehouse categories are NOT collapsed (ADD TO QTY, UNIQUES).
+    """
+    normalized_category = normalize_string(category_name)
+    normalized_store = normalize_string(store_name)
+
+    # If this is a warehouse/special call, do NOT collapse
+    if normalized_store == "WAREHOUSE":
+        return normalized_category
+
+    # Validate incoming API category names (optional but recommended)
+    if normalized_category not in API_CATEGORY_NAMES:
+        raise ValueError(f"Unknown API category={category_name}")
+
+    # Map down to hardware categories
+    return API_TO_HARDWARE_CATEGORY.get(normalized_category, "GROCERY")
 
 
 def map_to_led_index(category_name: str, store_name: str) -> int:
@@ -147,11 +186,13 @@ def route_led_request():
     hold_duration_ms = int(request_data.get("hold_ms", 10_000))  # default: 10 seconds
     dry_run_mode = bool(request_data.get("dry_run", False))       # skip hardware if true
 
-    # Determine LED index for this category/store combination
+    # Collapse API category -> hardware category (except warehouse specials)
     try:
-        led_index = map_to_led_index(category_name, store_name)
+        collapsed_category = collapse_category(category_name, store_name)
+        led_index = map_to_led_index(collapsed_category, store_name)
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
+
 
 
     # Create one-hot bitmask for SPI write (1 shifted by LED index)
@@ -172,8 +213,12 @@ def route_led_request():
         deviceId=led_index,
         maskHex=hex(led_bitmask),
         mode=led_mode,
-        hold_ms=hold_duration_ms
+        hold_ms=hold_duration_ms,
+        category_in=category_name,
+        category_mapped=collapsed_category,
+        store=store_name
     )
+
 
 
 @app.post("/api/led/off")
