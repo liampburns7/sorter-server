@@ -23,6 +23,7 @@ STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
 WAREHOUSE_LED_MAP = {
     "ADD TO QTY": 8,
     "UNIQUES": 9,
+    "BACKSTOCK": 10
 }
 
 # Categories the API is allowed to receive from Korting/front-end
@@ -33,13 +34,11 @@ API_CATEGORY_NAMES = {
     "PET SUPPLIES",
     "SNACKS & CANDY",
     "PANTRY & BREAKFAST",
-    "BACKSTOCK"
 }
 
 # Collapse API categories down to hardware categories
 API_TO_HARDWARE_CATEGORY = {
     "HBA & HOUSEHOLD": "CHEMICAL",
-    # everything else -> GROCERY (handled in function below)
 }
 
 
@@ -109,9 +108,9 @@ def collapse_category(category_name: str, store_name: str) -> str:
     if normalized_category not in API_CATEGORY_NAMES:
         raise ValueError(f"Unknown API category={category_name}")
 
-        # Enforce category/store constraints
-    if normalized_category == "BACKSTOCK" and normalized_store != "SOUTH GR":
-        raise ValueError("BACKSTOCK is only valid for storeName='South GR'")
+    # Enforce category/store constraints
+    if normalized_category == "BACKSTOCK" and normalized_store != "WAREHOUSE":
+        raise ValueError("BACKSTOCK is only valid for storeName='Warehouse'")
 
     # Map down to hardware categories
     return API_TO_HARDWARE_CATEGORY.get(normalized_category, "GROCERY")

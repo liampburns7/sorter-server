@@ -377,10 +377,10 @@
     });
 
     category.addEventListener('change', () => {
-      if (category.value === 'Backstock') store.value = 'SOUTH GR';
+      if (category.value === 'Backstock') store.value = 'WAREHOUSE';
     });
     store.addEventListener('change', () => {
-      if (category.value === 'Backstock' && store.value !== 'SOUTH GR') {
+      if (category.value === 'Backstock' && store.value !== 'WAREHOUSE') {
         category.value = 'Misc/Other';
       }
     });
