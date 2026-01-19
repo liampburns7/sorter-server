@@ -21,7 +21,7 @@ STATION_LABEL = os.getenv("STATION_LABEL", "Unnamed_Station")
 
 # Special function LEDs
 WAREHOUSE_LED_MAP = {
-    "ADD_TO_QTY": 8,
+    "ADD TO QTY": 8,
     "UNIQUES": 9,
 }
 
