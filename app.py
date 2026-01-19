@@ -31,8 +31,9 @@ API_CATEGORY_NAMES = {
     "HBA & HOUSEHOLD",
     "DRINKS",
     "PET SUPPLIES",
-    "SNACK & CANDY",
+    "SNACKS & CANDY",
     "PANTRY & BREAKFAST",
+    "BACKSTOCK"
 }
 
 # Collapse API categories down to hardware categories
@@ -107,6 +108,10 @@ def collapse_category(category_name: str, store_name: str) -> str:
     # Validate incoming API category names (optional but recommended)
     if normalized_category not in API_CATEGORY_NAMES:
         raise ValueError(f"Unknown API category={category_name}")
+
+        # Enforce category/store constraints
+    if normalized_category == "BACKSTOCK" and normalized_store != "SOUTH GR":
+        raise ValueError("BACKSTOCK is only valid for storeName='South GR'")
 
     # Map down to hardware categories
     return API_TO_HARDWARE_CATEGORY.get(normalized_category, "GROCERY")
