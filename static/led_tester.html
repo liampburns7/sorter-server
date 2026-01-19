@@ -283,10 +283,15 @@
         <div class="field">
           <label for="category">Category</label>
           <select id="category">
-            <option>Grocery</option>
-            <option>Chemical</option>
-            <option>Uniques</option>
+            <option>Misc/Other</option>
+            <option>HBA & Household</option>
+            <option>Drinks</option>
+            <option>Pet Supplies</option>
+            <option>Snacks & Candy</option>
+            <option>Pantry & Breakfast</option>
             <option>Add to Qty</option>
+            <option>Uniques</option>
+            <option>Backstock</option>
           </select>
         </div>
 
@@ -367,7 +372,16 @@
     });
     store.addEventListener('change', () => {
       if (category.value === 'Add to Qty' && store.value !== 'WAREHOUSE') {
-        category.value = 'Chemical';
+        category.value = 'Misc/Other';
+      }
+    });
+
+    category.addEventListener('change', () => {
+      if (category.value === 'Backstock') store.value = 'SOUTH GR';
+    });
+    store.addEventListener('change', () => {
+      if (category.value === 'Backstock' && store.value !== 'SOUTH GR') {
+        category.value = 'Misc/Other';
       }
     });
 
