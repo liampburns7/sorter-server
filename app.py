@@ -50,6 +50,13 @@ app = Flask(__name__, static_folder = "static", static_url_path = "/static")
 # Allow API calls from an allowlist of origins (configurable via environment)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# -------------------------------------------------------------------------
+# Blink controller (non-blocking, retriggers even for same LED)
+# -------------------------------------------------------------------------
+_blink_lock = threading.Lock()
+_blink_cancel = None
+_blink_job_id = 0
+
 # -----------------------------------------------------------------------------
 # Basic diagnostic endpoints
 # -----------------------------------------------------------------------------
@@ -152,6 +159,47 @@ def schedule_all_off(delay_ms: int):
         leds.all_off()
     threading.Thread(target=delayed_off_task, daemon=True).start()
 
+def blink_then_hold(mask: int, hz: float = 2.0, blink_s: float = 2.0):
+    """
+    Blink `mask` at `hz` for `blink_s` seconds, then leave it ON steady.
+    Retriggering cancels any in-progress blink immediately.
+    """
+    global _blink_cancel, _blink_job_id
+
+    with _blink_lock:
+        _blink_job_id += 1
+        my_job = _blink_job_id
+
+        # cancel the previous blink if it exists
+        if _blink_cancel is not None:
+            _blink_cancel.set()
+
+        _blink_cancel = threading.Event()
+        cancel_evt = _blink_cancel
+
+    def _worker():
+        period = 1.0 / hz
+        half = period / 2.0
+        t_end = time.time() + blink_s
+        on = True
+
+        # blink loop
+        while time.time() < t_end:
+            if cancel_evt.is_set():
+                return  # killed by a newer request
+
+            leds.set_mask(mask if on else 0)
+            on = not on
+            time.sleep(half)
+
+        # if we finished normally and we're still the latest job, leave LED ON
+        with _blink_lock:
+            if cancel_evt.is_set() or my_job != _blink_job_id:
+                return
+        leds.set_mask(mask)
+
+    threading.Thread(target=_worker, daemon=True).start()
+
 # -----------------------------------------------------------------------------
 # API routes for LED control
 # -----------------------------------------------------------------------------
@@ -203,12 +251,13 @@ def route_led_request():
     led_bitmask = (1 << led_index)
 
     if not dry_run_mode:
-        # Send the new bitmask to the LED driver board
-        leds.set_mask(led_bitmask)
+        # Blink for 2 seconds at 2 Hz, then stay ON
+        blink_then_hold(led_bitmask, hz=2.0, blink_s=2.0)
 
         # If mode is "timed", schedule a delayed off command
         if led_mode == "timed":
             schedule_all_off(hold_duration_ms)
+
 
     # Respond with debug information
     return jsonify(
@@ -228,6 +277,10 @@ def route_led_request():
 @app.post("/api/led/off")
 def turn_off_all_leds():
     """Immediately turns off all LEDs."""
+    global _blink_cancel
+    with _blink_lock:
+        if _blink_cancel is not None:
+            _blink_cancel.set()
     leds.all_off()
     return jsonify(ok=True)
 

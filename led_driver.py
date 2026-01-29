@@ -1,5 +1,5 @@
 # led_driver.py
-import os, threading
+import os, time, threading
 try:
     import spidev
 except ImportError:
@@ -50,3 +50,28 @@ def one_hot(index: int, n_leds: int = N_LEDS) -> int:
 
 def all_off():
     return set_mask(0, N_LEDS)
+
+def blink(index: int, hz: float = 2.0, duration_s: float | None = None, n_leds: int = N_LEDS):
+    """
+    Blink one LED at `hz` (cycles per second). If duration_s is None, runs forever.
+    2 Hz = ON 0.25s, OFF 0.25s, repeat.
+    """
+    period = 1.0 / hz
+    half = period / 2.0
+    on_mask = 1 << index
+
+    t_end = None if duration_s is None else (time.time() + duration_s)
+
+    while t_end is None or time.time() < t_end:
+        set_mask(on_mask, n_leds)   # ON
+        time.sleep(half)
+        set_mask(0, n_leds)         # OFF
+        time.sleep(half)
+
+def blink_bg(index: int, hz: float = 2.0, duration_s: float | None = None, n_leds: int = N_LEDS) -> threading.Thread:
+    """
+    Run blink() in a background thread so it doesn't block your main program.
+    """
+    t = threading.Thread(target=blink, args=(index, hz, duration_s, n_leds), daemon=True)
+    t.start()
+    return t
