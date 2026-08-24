@@ -41,12 +41,15 @@ def list_routes():
 # Constants for store/category mapping
 # -----------------------------------------------------------------------------
 CATEGORY_NAMES = [category.upper() for category in [
-    "Misc/Other", "HBA & Household", "Drinks",
-    "Pet Supplies", "Snacks & Candy", "Pantry & Breakfast"
+    "General", "NFS-Goods"
 ]]
 
-STORE_NAMES = [store.upper() for store in [
-    "South GR", "Muskegon", "Norton Shores", "Wyoming"
+DESTINATIONS = [store.upper() for store in [
+    "Muskegon", "Norton-Shores", "South-GR", "Wyoming"
+]]
+
+SPECIAL_CATEGORIES = [category.upper() for category in [
+    "Backstock", "Add-qty", "Unique"
 ]]
 
 # -----------------------------------------------------------------------------
@@ -57,21 +60,36 @@ def normalize_string(input_string: str) -> str:
     return input_string.strip().upper().replace(" AND ", " & ")
 
 
-def map_to_led_index(category_name: str, store_name: str) -> int:
+def map_to_led_index(category_name: str, store_name: str, special_name: str = None) -> int:
     """
     Convert a category and store name into a specific LED index (0–23).
-    Each store corresponds to a group of 6 categories (6 LEDs per store).
+    
+    Each store corresponds to a group of 2 categories (2 LEDs per store).
+    
+    There are 3 additional categories that are not store-specific, which
+    are mapped to 3 additional LEDs (leds 8-10). 
+    
+    The remaining LEDs (11-23) are reserved for future use or special cases.
     """
     normalized_category = normalize_string(category_name)
     normalized_store = normalize_string(store_name)
-
-    # Special case: dedicated backstock LED for South GR
-    if normalized_category == "BACKSTOCK" and normalized_store == "SOUTH GR":
-        return 24
+    
+    if special_name is not None:
+        normalized_special = normalize_string(special_name)
+        
+        match normalized_special:
+            case "BACKSTOCK":
+                return 8
+            case "ADD-QTY":
+                return 9
+            case "UNIQUE":
+                return 10
+            case _:
+                raise ValueError(f"Unknown special category: {special_name}")
 
     try:
         # Flatten store/category grid: LED index = store_index * num_categories + category_index
-        store_index = STORE_NAMES.index(normalized_store)
+        store_index = DESTINATIONS.index(normalized_store)
         category_index = CATEGORY_NAMES.index(normalized_category)
         return store_index * len(CATEGORY_NAMES) + category_index
     except ValueError as error:
@@ -99,6 +117,7 @@ def route_led_request():
     {
         "category": "Snacks & Candy",
         "storeName": "South GR",
+        "specialCategory": "Backstock",  # optional
         "mode": "timed" | "sticky",
         "hold_ms": 10000,
         "dry_run": false
@@ -107,12 +126,13 @@ def route_led_request():
     request_data = request.get_json(force = True)
     category_name = request_data["category"]
     store_name = request_data["storeName"]
+    special_name = request_data.get("specialCategory", None)  # optional
     led_mode = request_data.get("mode", "timed")           # either 'timed' or 'sticky'
     hold_duration_ms = int(request_data.get("hold_ms", 10_000))  # default: 10 seconds
     dry_run_mode = bool(request_data.get("dry_run", False))       # skip hardware if true
 
     # Determine LED index for this category/store combination
-    led_index = map_to_led_index(category_name, store_name)
+    led_index = map_to_led_index(category_name, store_name, special_name)
 
     # Create one-hot bitmask for SPI write (1 shifted by LED index)
     led_bitmask = (1 << led_index)
@@ -149,7 +169,7 @@ def led_test_sequence():
     Optional query parameter: ?ms=150 (delay per LED)
     """
     delay_ms = int(request.args.get("ms", "150"))
-    for led_index in range(25):  # cycle through LEDs 0–24
+    for led_index in range(24):  # cycle through LEDs 0–23
         leds.one_hot(led_index)
         time.sleep(delay_ms / 1000.0)
     leds.all_off()

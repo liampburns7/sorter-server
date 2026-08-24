@@ -5,7 +5,7 @@ try:
 except ImportError:
     spidev = None  # allows dry-run on dev hosts
 
-N_LEDS = int(os.getenv("N_LEDS", "25"))
+N_LEDS = int(os.getenv("N_LEDS", "24"))
 INVERT = bool(int(os.getenv("LED_INVERT", "0")))  # set to 1 if your hardware is inverted
 
 _spi = None
